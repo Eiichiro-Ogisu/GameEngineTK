@@ -92,6 +92,14 @@ void Enemy::Initialize()
 	this->SetPosition(pos);
 
 	_timer = 60;
+
+	{// 前進用の当たり判定を設定
+		_collisionNodeBody.SetParent(&_obj[PLAYER_PARTS_BODY]);
+		_collisionNodeBody.SetTrans(Vector3(0,0.5f,0));
+		_collisionNodeBody.SetLocalRadius(1.0f);
+	}
+
+	_distAngle = 0.0f;
 }
 
 /// <summary>
@@ -154,12 +162,11 @@ void Enemy::Update()
 		_obj[PLAYER_PARTS_BODY].SetTransform(pos + moveV);
 	}
 
-	for (std::vector<Obj3d>::iterator it = _obj.begin();
-		it != _obj.end();
-		it++)
-	{
-		it->Update();
-	}
+	// 行列の計算
+	Calc();
+
+	// 当たり判定の更新
+	_collisionNodeBody.Update();
 }
 
 void Enemy::Draw()
@@ -170,12 +177,25 @@ void Enemy::Draw()
 	{
 		it->Draw();
 	}
-}
+	_collisionNodeBody.Draw();
 
+
+}
 const DirectX::SimpleMath::Vector3 & Enemy::GetPosition()
 {
 	// TODO: return ステートメントをここに挿入します
 	return _obj[PLAYER_PARTS_BODY].GetTranslation();
+}
+
+void Enemy::Calc()
+{
+	for (std::vector<Obj3d>::iterator it = _obj.begin();
+		it != _obj.end();
+		it++)
+	{
+		it->Update();
+	}
+	_collisionNodeBody.Update();
 }
 
 void Enemy::SetPosition(const DirectX::SimpleMath::Vector3 & trans)

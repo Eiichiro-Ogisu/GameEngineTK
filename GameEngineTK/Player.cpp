@@ -82,6 +82,25 @@ void Player::Initialize()
 	_obj[PLAYER_PARTS_BATTERY2].SetTransform(Vector3(0.5, 0.9, -0.15));
 	_obj[PLAYER_PARTS_BATTERY2].SetScale(Vector3(0.5, 0.5, 0.5));
 
+
+	// TODO
+		{// 弾丸用の当たり判定を設定
+		_collisionNodeBullet.Initialize();
+				// 親パーツを指定
+		_collisionNodeBullet.SetParent(&_obj[PLAYER_PARTS_HAND]);
+		_collisionNodeBullet.SetTrans(Vector3(0, 0, 0));
+		_collisionNodeBullet.SetLocalRadius(0.5f);
+		}
+
+		{// 全身用の当たり判定を設定
+			_collisionNodeBody.Initialize();
+			// 親パーツを指定
+			_collisionNodeBody.SetParent(&_obj[0]);
+			_collisionNodeBody.SetTrans(Vector3(0, 1.0f, 0));
+			_collisionNodeBody.SetLocalRadius(1.0f);
+		}
+
+		m_isJump = false;
 }
 
 /// <summary>
@@ -96,6 +115,35 @@ void Player::Update()
 
 	// キ-ボードの状態
 	Keyboard::State keyboardState = dxtk.m_keyboard->GetState();
+
+	//// デバッグ表示用キー入力
+	//if (keyboardState.B)
+	//{
+	//	CollisionNode::GetDebugVisible(true);
+	//}
+
+	/// <summary>
+	/// 重力関連
+	/// </summary>
+	if (keyboardState.M)
+	{
+		// ジャンプ開始
+		StartJump();
+	}
+
+	// ジャンプ中
+	if (m_isJump)
+	{
+		m_velocity.y -= GRAVITY_ACC;
+		if (m_velocity.y <= -JUMP_SPEED_MAX)
+		{
+			m_velocity.y = -JUMP_SPEED_MAX;
+		}
+	}
+
+	Vector3 trans = this->GetPosition();
+	trans += m_velocity;
+	this->SetPosition(trans);
 
 	// キー操作
 	if (keyboardState.W)
@@ -147,12 +195,10 @@ void Player::Update()
 
 
 
-	for (std::vector<Obj3d>::iterator it = _obj.begin();
-		it != _obj.end();
-		it++)
-	{
-		it->Update();
-	}
+
+	// 当たり判定の更新
+	_collisionNodeBullet.Update();
+
 
 	if (keyboardState.Space)
 	{
@@ -184,7 +230,7 @@ void Player::Update()
 			cnt = 0;
 		}
 	}
-
+	Calc();
 }
 
 void Player::Draw()
@@ -194,6 +240,13 @@ void Player::Draw()
 		it++)
 	{
 		it->Draw();
+	}
+
+	if (CollisionNode::GetDebugVisible())
+	{
+		_collisionNodeBullet.Draw();
+
+		_collisionNodeBody.Draw();
 	}
 }
 
@@ -227,7 +280,7 @@ void Player::FireBullet()
 
 
 	// 弾丸の速度を設定
-	_bulletVel = Vector3(0, 0, -0.1f);
+	_bulletVel = Vector3(0, 0, -0.5f);
 	_bulletVel = Vector3::Transform(_bulletVel, rotation);
 }
 
@@ -253,6 +306,20 @@ const DirectX::SimpleMath::Vector3 & Player::GetPosition()
 	return _obj[PLAYER_PARTS_BODY].GetTranslation();
 }
 
+void Player::Calc()
+{
+	for (std::vector<Obj3d>::iterator it = _obj.begin();
+		it != _obj.end();
+		it++)
+	{
+		it->Update();
+	}
+
+	_collisionNodeBody.Update();
+
+	_collisionNodeBullet.Update();
+}
+
 void Player::SetPosition(const DirectX::SimpleMath::Vector3 & trans)
 {
 	_obj[PLAYER_PARTS_BODY].SetTransform(trans);
@@ -271,3 +338,42 @@ const DirectX::SimpleMath::Vector3 & Player::GetRot()
 	return _obj[PLAYER_PARTS_BODY].GetRotation();
 }
 
+/// <summary>
+/// ジャンプ開始
+/// </summary>
+void Player::StartJump()
+{
+	// ジャンプ中でないか
+	if (!m_isJump)
+	{
+		// 上方向の速度を設定
+		m_velocity.y = JUMP_SPEED_FIRST;
+
+		m_isJump = true;
+	}
+}
+
+/// <summary>
+/// 落下開始
+/// </summary>
+void Player::StartFall()
+{
+	// ジャンプ中でないか
+	if (!m_isJump)
+	{
+		// 上方向の速度を設定
+		m_velocity.y = 0.0f;
+
+		m_isJump = true;
+	}
+}
+
+/// <summary>
+/// ジャンプを終了する
+/// </summary>
+void Player::StopJump()
+{
+	m_isJump = false;
+
+	m_velocity = Vector3::Zero;
+}

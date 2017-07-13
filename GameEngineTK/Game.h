@@ -12,6 +12,7 @@
 #include "Obj3d.h"
 #include "Player.h"
 #include "Enemy.h"
+#include "LandShape.h"
 
 #include <PrimitiveBatch.h>		// PrimitiveBatch
 #include <VertexTypes.h>		// VertexPositionColor
@@ -129,24 +130,12 @@ private:
 
 	DirectX::SimpleMath::Matrix m_worldBall2[10];
 
-	DirectX::SimpleMath::Matrix m_worldGround;
+	//DirectX::SimpleMath::Matrix m_worldGround;
 
 	// ティーポットワールド行列
 	DirectX::SimpleMath::Matrix m_worldTeapot[20];
 
 	DirectX::SimpleMath::Matrix buf[20];
-
-	//// 自機のワールド行列
-	//DirectX::SimpleMath::Matrix m_worldHead = DirectX::SimpleMath::Matrix::Identity;
-
-	//// 自機のワールド行列2
-	//DirectX::SimpleMath::Matrix m_worldHead2 = DirectX::SimpleMath::Matrix::Identity;
-
-	// 自機の3dオブジェクト
-	//std::vector<Obj3d> m_objPlayer1;
-	Obj3d _player2;
-
-	//std::vector<Obj3d> m_objPlayer;
 
 	int m_angle = 0;
 
@@ -168,14 +157,7 @@ private:
 
 	DirectX::SimpleMath::Matrix transBuf[20];
 
-	//std::unique_ptr<DirectX::Keyboard> _keyboard;
-
-	// ここ危ない
-	//DirectX::Keyboard::KeyboardStateTracker m_PlayerKey;
-
-	Player* _player;
-
-	//DirectX::Keyboard::State g_key;
+	std::unique_ptr<Player> _player;
 
 	// 自機の座標
 	DirectX::SimpleMath::Vector3 tankPos;
@@ -187,4 +169,7 @@ private:
 
 	// 敵
 	std::vector<std::unique_ptr<Enemy>> _enemies;
+
+	// 地形
+	LandShape m_landShape;
 };

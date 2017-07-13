@@ -4,7 +4,7 @@
 
 #include "pch.h"
 #include "Game.h"
-
+#include "ModelEffect.h"
 
 extern void ExitGame();
 
@@ -13,12 +13,6 @@ using namespace DirectX;
 using namespace DirectX::SimpleMath;
 
 using Microsoft::WRL::ComPtr;
-
-//std::unique_ptr<BasicEffect> basicEffect;
-//
-//ComPtr<ID3D11InputLayout> inputLayout;
-//
-//std::unique_ptr<PrimitiveBatch<VertexPositionColor>> primitiveBatch;	// VertexPositionColor = 座標と色を持った頂点情報
 
 Game::Game() :
     m_window(0),
@@ -52,16 +46,25 @@ void Game::Initialize(HWND window, int width, int height)
 
 	dxtk.Initializer(m_d3dDevice.Get(),m_d3dContext.Get());
 
-	// キーボードの初期化
-	//_keyboard = std::make_unique<Keyboard>();
 	// カメラの生成
 	m_camera = std::make_unique<FollowCamera>(m_outputWidth, m_outputHeight);
 	
 	// 3dオブジェクトの静的メンバを初期化
 	Obj3d::InitializeStatic(m_d3dDevice, m_d3dContext, m_camera.get());
 
+	// 地形クラスの初期化
+	LandShapeCommonDef lscdef;
+
+	lscdef.pDevice = m_d3dDevice.Get();
+
+	lscdef.pDeviceContext = m_d3dContext.Get();
+
+	lscdef.pCamera = m_camera.get();
+
+	LandShape::InitializeCommon(lscdef);
+
 	// プレイヤーの生成 
-	_player = new Player();
+	_player = std::make_unique<Player>();
 
 	// 敵の生成
 	int enemyNum = rand() % 10 + 1;
@@ -75,152 +78,37 @@ void Game::Initialize(HWND window, int width, int height)
 		_enemies[i]->Initialize();
 	}
 
-	// カメラにキーボード設置
-	//m_camera->SetKeyboard(_keyboard.get());
-
-
-					// new
-	m_batch = std::make_unique<PrimitiveBatch<VertexPositionNormal>>(m_d3dContext.Get());
-																// 普通のポインターに置き換える
-	m_effect = std::make_unique<BasicEffect>(m_d3dDevice.Get());
-
-	//// 縦幅、横幅の設定
-	//m_effect->SetProjection(XMMatrixOrthographicOffCenterRH(0,
-	//	m_outputWidth, m_outputHeight, 0, 0, 1));
-
-	// 3D用
-
-	m_effect->SetView(m_view);
-	m_effect->SetProjection(m_proj);
-
-	m_effect->SetVertexColorEnabled(true);
-
-	void const* shaderByteCode;
-	size_t byteCodeLength;
-
-	m_effect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
-
-	m_d3dDevice->CreateInputLayout(VertexPositionColor::InputElements,
-		VertexPositionColor::InputElementCount,
-		shaderByteCode, byteCodeLength,
-		m_inputLayout.GetAddressOf());
-
-	// デバッグカメラ生成
-	//m_debugCamera = std::make_unique<DebugCamera>(m_outputWidth,m_outputHeight);
-
 	 //エフェクトファクトリ生成
 	m_factory = std::make_unique<EffectFactory>(m_d3dDevice.Get());
 
-	 //テクスチャの読み込みパス指定
+	//テクスチャの読み込みパス指定
 	m_factory->SetDirectory(L"Resources");
 
-	// モデルの読み込み
-	m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(),L"Resources\\Ground200m.cmo",*m_factory);
+	// 地形データの読み込み(landshapeファイル名,cmoファイル名)
+	m_landShape.Initialize(L"Ground200m", L"Ground200m");
+	m_landShape.SetRot(Vector3(0.05f, 0, 0));
 
 	m_objSkydome.LoadModel(L"Resources\\Skydome.cmo");
-	
+
 	m_skydome2 = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources\\Skydome2.cmo", *m_factory);
 
 	m_teapot = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources\\teapot.cmo", *m_factory);
-
-	//m_modelHead = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources\\head.cmo", *m_factory);
-
-	// ティーポットのワールド座標設定
-	for (int i = 0; i < 20; i++)
-	{
-		m_x[i] = rand() % 200 - 100;
-
-		m_z[i] = rand() % 200 - 100;
-
-		Matrix scaleMat = Matrix::CreateScale(2.0f);
-
-		buf[i] = Matrix::CreateTranslation(m_x[i], 0, m_z[i]);
-	}
-
-	//// 自機パーツの読み込み
-	//m_objPlayer1.resize(PLAYER_PARTS_NUM);
-	//m_objPlayer1[PLAYER_PARTS_LEG].LoadModel(L"Resources\\leg.cmo");
-	//m_objPlayer1[PLAYER_PARTS_BODY].LoadModel(L"Resources\\body.cmo");
-	//m_objPlayer1[PLAYER_PARTS_BATTERY].LoadModel(L"Resources\\battery.cmo");
-	//m_objPlayer1[PLAYER_PARTS_BATTERY2].LoadModel(L"Resources\\battery.cmo");
-	//m_objPlayer1[PLAYER_PARTS_HAND].LoadModel(L"Resources\\hand.cmo");
-	//m_objPlayer1[PLAYER_PARTS_HAND2].LoadModel(L"Resources\\hand.cmo");
-	//m_objPlayer1[PLAYER_PARTS_HEAD].LoadModel(L"Resources\\head.cmo");
-
-
-	//// パーツの親子関係をセット
-	//m_objPlayer1[PLAYER_PARTS_HEAD].SetParent(
-	//	&m_objPlayer1[PLAYER_PARTS_BODY]);
-
-	//m_objPlayer1[PLAYER_PARTS_HAND].SetParent(
-	//	&m_objPlayer1[PLAYER_PARTS_BODY]);
-
-	//m_objPlayer1[PLAYER_PARTS_HAND2].SetParent(
-	//	&m_objPlayer1[PLAYER_PARTS_BODY]);
-
-	//m_objPlayer1[PLAYER_PARTS_LEG].SetParent(
-	//	&m_objPlayer1[PLAYER_PARTS_BODY]);
-
-	//m_objPlayer1[PLAYER_PARTS_BATTERY].SetParent(
-	//	&m_objPlayer1[PLAYER_PARTS_BODY]);
-
-	//m_objPlayer1[PLAYER_PARTS_BATTERY2].SetParent(
-	//	&m_objPlayer1[PLAYER_PARTS_BODY]);
-
-
-	//// 親からのオフセット
-	//// ボディの座標をいい感じの位置に
-	//m_objPlayer1[PLAYER_PARTS_BODY].SetTransform(Vector3(0,0.25,0));
-
-	//// 足をいい感じに
-	//m_objPlayer1[PLAYER_PARTS_LEG].SetScale(Vector3(0.8, 0.25, 0.5));
-
-	//m_objPlayer1[PLAYER_PARTS_LEG].SetTransform(Vector3(0, -0.25, 0));
-
-	//// 両手をいい感じに
-	//m_objPlayer1[PLAYER_PARTS_HAND].SetTransform(Vector3(-0.5, 0.6, -0.2));
-	//m_objPlayer1[PLAYER_PARTS_HAND].SetScale(Vector3(0.25, 0.25, 0.75));
-
-	//m_objPlayer1[PLAYER_PARTS_HAND2].SetTransform(Vector3(0.5, 0.6, -0.2));
-	//m_objPlayer1[PLAYER_PARTS_HAND2].SetScale(Vector3(0.25, 0.25, 0.75));
-
-	//// 頭をいい感じに
-	//m_objPlayer1[PLAYER_PARTS_HEAD].SetTransform(Vector3(0, 1, 0));
-	//m_objPlayer1[PLAYER_PARTS_HEAD].SetScale(Vector3(1.5, 1.5, 1.5));
-
-	//// タンクをいい感じに
-	//m_objPlayer1[PLAYER_PARTS_BATTERY].SetRotation(Vector3(0, 135, -0.55));
-	//m_objPlayer1[PLAYER_PARTS_BATTERY].SetTransform(Vector3(-0.5,0.9,-0.15));
-	//m_objPlayer1[PLAYER_PARTS_BATTERY].SetScale(Vector3(0.5, 0.5, 0.5));
-
-
-	//m_objPlayer1[PLAYER_PARTS_BATTERY2].SetRotation(Vector3(0, 135, 0.55));
-	//m_objPlayer1[PLAYER_PARTS_BATTERY2].SetTransform(Vector3(0.5, 0.9, -0.15));
-	//m_objPlayer1[PLAYER_PARTS_BATTERY2].SetScale(Vector3(0.5, 0.5, 0.5));
-
 }
 
 // Executes the basic game loop.
 void Game::Tick()
 {
-    m_timer.Tick([&]()
-    {
-        Update(m_timer);
-    });
+	m_timer.Tick([&]()
+	{
+		Update(m_timer);
+	});
 
-    Render();
+	Render();
 }
 
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
-	//g_key = _keyboard->GetState();
-
-	//// ここ危ない
-	//Keyboard::State keyboardState = _keyboard->GetState();
-
-	//m_PlayerKey.Update(keyboardState);
-
 	// DXTKを管理するインスタンスを取得
 	DXTK::DXTKResources& dxtk = DXTK::DXTKResources::singleton();
 
@@ -230,10 +118,10 @@ void Game::Update(DX::StepTimer const& timer)
 	Keyboard::State keyboardState = dxtk.m_keyboard->GetState();
 
 
-    float elapsedTime = float(timer.GetElapsedSeconds());
+	float elapsedTime = float(timer.GetElapsedSeconds());
 
-    // TODO: Add your game logic here.
-    //elapsedTime;
+	// TODO: Add your game logic here.
+	//elapsedTime;
 
 	_player->Update();
 
@@ -242,6 +130,48 @@ void Game::Update(DX::StepTimer const& timer)
 		it++)
 	{
 		(*it)->Update();
+	}
+
+	{
+		// 弾丸と敵の当たり判定
+		const Sphere& bulletSphere = _player->GetCollisionNodeBullet();
+
+		// 敵の数だけ処理
+		for (std::vector<std::unique_ptr<Enemy>>::iterator it = _enemies.begin();
+
+			it != _enemies.end();
+			)
+		{
+			Enemy* enemy = it->get();
+
+			const Sphere& enemySphere = enemy->GetCollisionNodeBody();
+			
+			if (CheckSphere2Sphere(bulletSphere, enemySphere))
+			{
+				ModelEffectManager::getInstance()->Entry(
+					L"Resources/hit_effect.cmo",
+					20 ,
+					enemy->GetPosition(),		// ワールド座標
+					Vector3(0, 0, 0),	// 速度
+					Vector3(0, 0, 0),	// 加速度
+					Vector3(0, 0, 0),	// 回転角（初期）
+					Vector3(0, 0, 0),	// 回転角（最終）
+					Vector3(0, 0, 0),	// スケール（初期）
+					Vector3(2, 2, 2)	// スケール（最終）
+				);
+
+				// 敵を殺す
+				// eraseした要素の次の要素を指すイテレータ
+				it = _enemies.erase(it);
+
+				//it++;
+			}
+			else
+			{
+				// イテレータを1つ進める
+				it++;
+			}
+		}
 	}
 
 	{// 自機に追従するカメラ
@@ -263,6 +193,70 @@ void Game::Update(DX::StepTimer const& timer)
 	}
 
 	m_objSkydome.Update();
+
+	m_landShape.Update();
+
+	{// 自機の地形へのめり込みを排斥する
+		// 自機の当たり判定球を取得
+		Sphere sphere = _player->GetCollisionNodeBody();
+		// 自機のワールド座標を取得
+		Vector3 trans = _player->GetPosition();
+		// 球の中心から自機センターへのベクトル
+		Vector3 sphere2player = trans - sphere._center;
+
+		// めり込み排斥ベクトル
+		Vector3 reject;
+
+		// 地形と球の当たり判定
+		if (m_landShape.IntersectSphere(sphere,&reject))
+		{
+			// めり込みを解消するように移動
+			sphere._center += reject;
+		}
+
+		// 自機を移動
+		_player->SetPosition(sphere._center + sphere2player);
+		
+		_player->Calc();
+	}
+	
+	{// 自機が地面に立つ処理
+		if (_player->GetVelocity().y <= 0.0f)
+		{
+
+
+
+			Segment player_segment;
+
+			// 自機のワールド座標を取得
+			Vector3 trans = _player->GetPosition();
+
+			player_segment.Start = trans + Vector3(0, 1, 0);
+			player_segment.End = trans = trans + Vector3(0, -0.5f, 0);
+
+			// 交点
+			Vector3 inter;
+
+			// 地形と線分の当たり判定(レイキャスティング)
+			if (m_landShape.IntersectSegment(player_segment, &inter))
+			{
+				// Y座標のみ交点の位置に移動
+				trans.y = inter.y;
+
+				// 落下終了
+				_player->StopJump();
+			}
+			else
+			{
+				// 落下開始
+				_player->StartFall();
+			}
+			// 自機を移動
+			_player->SetPosition(trans);
+
+			_player->Calc();
+		}
+	}
 
 	// ビュー行列を取得
 	m_view = m_camera->GetViewMatrix();
@@ -290,85 +284,18 @@ void Game::Update(DX::StepTimer const& timer)
 		m_scale2++;
 	}
 
-
 	m_scale = Matrix::CreateScale(m_scale2 / 60);
 
 	Matrix translation;
 
 	Matrix transRotY = Matrix::CreateRotationY(XMConvertToRadians(m_angle));
 
-	for (int i = 0; i < 20; i++)
-	{
-		translation = m_scale * transRotY * buf[i];
-
-		m_worldTeapot[i] = translation;
-
-		buf[i] = Matrix::CreateTranslation(m_x[i]*worldTimer,0,m_z[i]*worldTimer);
-	}
-
 	if (worldTimer >= 0)
 	{
 		worldTimer -= 0.1 / 60;
 	}
 
-	//// キー操作
-	//if (g_key.W)
-	//{
-	//	// 移動量
-	//	Vector3 moveV = Vector3(0.0f, 0.0f, -0.1f);
-
-	//	float angle = m_objPlayer1[PLAYER_PARTS_BODY].GetRotation().y;
-
-	//	Matrix rotmat = Matrix::CreateRotationY(angle);
-
-	//	moveV = Vector3::TransformNormal(moveV,rotmat);
-
-	//	// 自機移動
-	//	Vector3 pos = m_objPlayer1[PLAYER_PARTS_BODY].GetTranslation();
-	//	m_objPlayer1[PLAYER_PARTS_BODY].SetTransform(pos + moveV);
-	//}
-
-	//if (g_key.S)
-	//{
-	//	// 移動量
-	//	Vector3 moveV = Vector3(0.0f, 0.0f, 0.1f);
-
-	//	float angle = m_objPlayer1[PLAYER_PARTS_BODY].GetRotation().y;
-
-	//	Matrix rotmat = Matrix::CreateRotationY(angle);
-
-	//	moveV = Vector3::TransformNormal(moveV, rotmat);
-
-	//	// 自機移動
-	//	Vector3 pos = m_objPlayer1[PLAYER_PARTS_BODY].GetTranslation();
-	//	m_objPlayer1[PLAYER_PARTS_BODY].SetTransform(pos + moveV);
-	//}
-
-	//if (g_key.A)
-	//{
-	//	// 回転量
-	//	//float rot = 0.03f;
-	//	float angle = m_objPlayer1[PLAYER_PARTS_BODY].GetRotation().y;
-	//	m_objPlayer1[PLAYER_PARTS_BODY].SetRotation(Vector3(0, angle + 0.03f, 0));
-
-	//	//m_objPlayer1[PLAYER_PARTS_BODY]
-	//}
-
-	//if (g_key.D)
-	//{
-	//	// 回転量
-	//	//float rot = -0.03f;
-	//	float angle = m_objPlayer1[PLAYER_PARTS_BODY].GetRotation().y;
-	//	m_objPlayer1[PLAYER_PARTS_BODY].SetRotation(Vector3(0, angle - 0.03f, 0));
-
-	//}
-
-	//for (std::vector<Obj3d>::iterator it = m_objPlayer1.begin(); 
-	//	it != m_objPlayer1.end();
-	//	it++)
-	//{
-	//	it->Update();
-	//}
+	ModelEffectManager::getInstance()->Update();
 
 	/// <summary>
 	/// 近距離攻撃 後で関数化
@@ -376,40 +303,7 @@ void Game::Update(DX::StepTimer const& timer)
 	if (keyboardState.E)
 	{
 		_shortRangeAttackRot += 0.5;
-
-		//m_objPlayer1[PLAYER_PARTS_HAND].SetRotation(Vector3(0, 0, _shortRangeAttackRot));
-		//m_objPlayer1[PLAYER_PARTS_HAND2].SetRotation(Vector3(0, 0, -_shortRangeAttackRot));
-
-		//m_objPlayer1[PLAYER_PARTS_HAND].SetScale(Vector3(0.25, 0.25, 1.25));
-		//m_objPlayer1[PLAYER_PARTS_HAND2].SetScale(Vector3(0.25, 0.25, 1.25));
-		
-		// ここ危ない
-		//if (m_PlayerKey.IsKeyReleased(Keyboard::Keys::E))
-		//{
-		//	m_objPlayer1[PLAYER_PARTS_HAND].SetScale(Vector3(0.25, 0.25, 0.75));
-		//	m_objPlayer1[PLAYER_PARTS_HAND2].SetScale(Vector3(0.25, 0.25, 0.75));
-		//}
-
-	}
-
-	//{// 自機のワールド行列を計算
-
-	//	// パーツ1(親)
-	//	Matrix rot = Matrix::CreateRotationY(tankRot);
-
-	//	Matrix trans = Matrix::CreateTranslation(tankPos);
-
-	//	// ワールド行列を合成
-	//	m_worldHead = rot * trans;
-
-	//	// パーツ2(子)
-	//	Matrix rot2 = Matrix::CreateRotationZ(XMConvertToRadians(90))*Matrix::CreateRotationY(0);
-
-	//	Matrix trans2 = Matrix::CreateTranslation(Vector3(0,0.5f,0));
-
-	//	m_worldHead2 = rot2 * trans2 * m_worldHead;
-
-	//}
+	}	
 }
 
 // Draws the scene.
@@ -446,31 +340,14 @@ void Game::Render()
 	// 描画処理
 	DirectX::CommonStates m_states(m_d3dDevice.Get());
 	
-	// 地面モデルの描画
-	m_modelGround->Draw(m_d3dContext.Get(), m_states, m_world, m_view, m_proj);
+	m_landShape.Draw();
+
+	//// 地面モデルの描画
+	//m_modelGround->Draw(m_d3dContext.Get(), m_states, m_world, m_view, m_proj);
 
 	m_objSkydome.Draw();
 
-
-	//for (int i = 0; i < 10; i++)
-	//{
-	//	m_skydome2->Draw(m_d3dContext.Get(), m_states, m_worldBall[i], m_view, m_proj);
-
-	//	m_skydome2->Draw(m_d3dContext.Get(), m_states, m_worldBall2[i], m_view, m_proj);
-
-	//}
-			
-	m_modelGround->Draw(m_d3dContext.Get(), m_states, m_worldGround, m_view, m_proj);
-	//// ティーポットのモデルの描画
-	//for (int i = 0; i < 20; i++)
-	//{
-	//	m_teapot->Draw(m_d3dContext.Get(), m_states, m_worldTeapot[i], m_view, m_proj);
-	//}
-
-	//// 頭部モデル
-	//m_modelHead->Draw(m_d3dContext.Get(), m_states, m_worldHead, m_view, m_proj);
-	//// 頭部モデル2
-	//m_modelHead->Draw(m_d3dContext.Get(), m_states, m_worldHead2, m_view, m_proj);
+	//m_modelGround->Draw(m_d3dContext.Get(), m_states, m_worldGround, m_view, m_proj);
 
 	// プレイヤーの描画
 	_player->Draw();
@@ -481,10 +358,11 @@ void Game::Render()
 	{
 		(*it)->Draw();
 	}
+	ModelEffectManager::getInstance()->Draw();
 
 	// タンクの平行移動
-
     Present();
+
 }
 
 // Helper method to clear the back buffers.

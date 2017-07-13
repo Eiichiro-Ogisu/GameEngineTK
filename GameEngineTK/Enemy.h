@@ -10,6 +10,7 @@
 #include "Singleton.h"
 #include "DXTKResouces.h"
 #include "obj3d.h"
+#include "CollisionNode.h"
 
 class Enemy
 {
@@ -18,8 +19,8 @@ public:
 	// 自機パーツ
 	enum PLAYER_PARTS
 	{
-		PLAYER_PARTS_LEG,
 		PLAYER_PARTS_BODY,
+		PLAYER_PARTS_LEG,
 		PLAYER_PARTS_BATTERY,
 		PLAYER_PARTS_BATTERY2,
 		PLAYER_PARTS_HAND,
@@ -59,6 +60,9 @@ public:
 	/// </summary>
 	const DirectX::SimpleMath::Vector3& GetPosition();
 
+	// 行列の計算
+	void Calc();
+
 	/// <summary>
 	/// 座標を設定
 	/// </summary>
@@ -77,6 +81,9 @@ public:
 	/// 回転を設定
 	void SetRot(const DirectX::SimpleMath::Vector3& rot);
 
+	// 
+	const SphereNode& GetCollisionNodeBody() { return _collisionNodeBody; }
+
 protected:
 	// サイン用の引数の角度
 	float _sinAngle;
@@ -89,5 +96,8 @@ protected:
 
 	// 目的地の角度
 	float _distAngle;
+
+	// 全身用の当たり判定
+	SphereNode _collisionNodeBody;
 
 };

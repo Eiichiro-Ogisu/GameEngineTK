@@ -68,6 +68,10 @@ public:
 
 	// 親の3dオブジェクトのポインタ
 	void SetParent(Obj3d* parent) { m_parent = parent; }
+
+	// ワールド行列
+	void SetWorld(const DirectX::SimpleMath::Matrix world) { m_world = world; }
+
 	// getter
 	// スケーリング(XYZ)
 	const DirectX::SimpleMath::Vector3& GetScale() { return m_scale; }
